@@ -2369,6 +2369,11 @@ init:
 	// set ipv4/ipv6/mixed media stats
 	if (flags && (flags->opmode == OP_OFFER || flags->opmode == OP_ANSWER)) {
 		statistics_update_ip46_inc_dec(call, CMC_INCREMENT);
+		
+		if (!call->rtpe_connection_addr.len) {
+			call->rtpe_connection_addr.s = call_malloc(call, 64);
+			format_network_address(&call->rtpe_connection_addr, media->streams.head->data, flags, 0);
+		}
 	}
 
 	return 0;
