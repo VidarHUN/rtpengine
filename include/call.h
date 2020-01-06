@@ -355,6 +355,7 @@ struct call_media {
 	int			ptime; // either from SDP or overridden
 
 	volatile unsigned int	media_flags;
+	str			rtpe_connection_addr;
 };
 
 /* half a dialogue */
@@ -416,7 +417,6 @@ struct call {
 	char			*created_from;
 	sockaddr_t		created_from_addr;
 	sockaddr_t		xmlrpc_callback;
-	str			rtpe_connection_addr;
 	
 	unsigned int		redis_hosted_db;
 

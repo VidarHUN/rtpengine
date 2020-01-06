@@ -2102,6 +2102,16 @@ static void __update_media_protocol(struct call_media *media, struct call_media 
 			__t38_reset(media, other_media);
 		// drop through for protocol override
 	}
+static void __update_rtpe_address(struct call_media* media, struct sdp_ng_flags *flags) {
+	struct packet_stream *ps;
+	
+	if (media->rtpe_connection_addr.len || !media->streams.head)
+		return;
+	
+	ps = media->streams.head->data;
+	media->rtpe_connection_addr.s = call_malloc(media->call, 64);
+	format_network_address(&media->rtpe_connection_addr, ps, flags, 0);
+	rlog(LOG_INFO, "Stored media address %s",media->rtpe_connection_addr.s);
 }
 
 /* called with call->master_lock held in W */
@@ -2374,6 +2384,8 @@ init:
 			call->rtpe_connection_addr.s = call_malloc(call, 64);
 			format_network_address(&call->rtpe_connection_addr, media->streams.head->data, flags, 0);
 		}
+		__update_rtpe_address(media, flags);
+		__update_rtpe_address(other_media, flags);
 	}
 
 	return 0;
