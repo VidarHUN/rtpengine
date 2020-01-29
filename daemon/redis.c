@@ -1039,9 +1039,9 @@ static struct timeval strtotimeval(const char *c, char **endp, int base) {
 define_get_int_type(time_t, time_t, strtoull);
 define_get_int_type(timeval, struct timeval, strtotimeval);
 define_get_int_type(int, int, strtol);
-define_get_int_type(unsigned, unsigned int, strtol);
-//define_get_int_type(u16, uint16_t, strtol);
-//define_get_int_type(u64, uint64_t, strtoull);
+define_get_int_type(unsigned, unsigned int, strtoul);
+//define_get_int_type(u16, u_int16_t, strtol);
+//define_get_int_type(u64, u_int64_t, strtoull);
 define_get_int_type(a64, atomic64, strtoa64);
 
 define_get_type_format(str, str);
