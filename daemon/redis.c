@@ -1744,6 +1744,9 @@ static void json_restore_call(struct redis *r, const str *callid, int foreign) {
 	if (!c)
 		goto err1;
 
+	err = "call already exists";
+	if (c->last_signal.tv_sec)
+		goto err2;
 	err = "'call' data incomplete";
 	if (json_get_hash(&call, "json", -1, root_reader))
 		goto err2;
@@ -1783,6 +1786,9 @@ static void json_restore_call(struct redis *r, const str *callid, int foreign) {
 	if (redis_hash_get_timeval(&c->created, &call, "created"))
 		goto err8;
 	c->last_signal = last_signal;
+	err = "missing 'last signal' timestamp";
+	if (redis_hash_get_timeval(&c->last_signal, &call, "last_signal"))
+		goto err8;
 	if (redis_hash_get_int(&i, &call, "tos"))
 		c->tos = 184;
 	else
@@ -2155,7 +2161,7 @@ static void redis_update_call_details(struct redis *r, struct call *c) {
 	if (!redis_call)
 		goto fail;
 
-	if (c->last_signal == redis_call->last_signal) {
+	if (timeval_us(&c->last_signal) == timeval_us(&redis_call->last_signal)) {
 		rlog(LOG_INFO, "Ignoring Redis notification without update");
 		goto done;
 	}
@@ -2390,7 +2396,7 @@ char* redis_encode_json(struct call *c) {
 
 		{
 			JSON_SET_SIMPLE("created","%lli", timeval_us(&c->created));
-			JSON_SET_SIMPLE("last_signal","%ld",(long int) c->last_signal);
+			JSON_SET_SIMPLE("last_signal","%lli",timeval_us(&c->last_signal));
 			JSON_SET_SIMPLE("tos","%u",(int) c->tos);
 			JSON_SET_SIMPLE("deleted","%ld",(long int) c->deleted);
 			JSON_SET_SIMPLE("num_sfds","%u",g_queue_get_length(&c->stream_fds));
