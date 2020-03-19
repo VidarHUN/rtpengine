@@ -1381,6 +1381,12 @@ static const char *call_offer_answer_ng(struct ng_buffer *ngbuf, bencode_item_t 
 				errstr = magic_load_limit_strings[limit];
 			goto out;
 		}
+	}
+	if (opmode == OP_OFFER && !flags.fragment) {
+		if (!call) {
+			/* call == NULL, should create call */
+			call = call_get_or_create(&flags.call_id, CT_OWN_CALL);
+		}
 
 		call = call_get_or_create(&flags.call_id, 0);
 	}
