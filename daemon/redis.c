@@ -1305,7 +1305,7 @@ static int redis_sfds(struct call *c, struct redis_list *sfds) {
 		if (IS_FOREIGN_CALL(c)) {
 			sock = g_slice_alloc0(sizeof(*sock));
 			err = "failed to register foreign port";
-			if (create_foreign_socket(sock, SOCK_DGRAM, port, &loc->spec->local_address.addr))
+			if (create_foreign_socket(sock, SOCK_DGRAM, port, &loc->spec->local_address.addr, &c->callid))
 				goto err;
 		} else {
 			err = "failed to open ports";

@@ -203,7 +203,7 @@ int connect_socket(socket_t *r, int type, const endpoint_t *ep);
 int connect_socket_nb(socket_t *r, int type, const endpoint_t *ep); // 1 == in progress
 int connect_socket_retry(socket_t *r); // retries connect() while in progress
 int close_socket(socket_t *r);
-int create_foreign_socket(socket_t *r, int type, unsigned int port, const sockaddr_t * sa);
+int create_foreign_socket(socket_t *r, int type, unsigned int port, const sockaddr_t * sa, const str *label);
 
 sockfamily_t *get_socket_family_rfc(const str *s);
 sockfamily_t *__get_socket_family_enum(enum socket_families);
