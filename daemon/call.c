@@ -163,7 +163,7 @@ static void call_timer_iterator(struct call *c, struct iterator_helper *hlp) {
 	}
 
 	if (c->deleted && rtpe_now.tv_sec >= c->deleted
-			&& c->last_signal.tv_sec <= c->deleted)
+			&& c->last_signal <= c->deleted)
 		goto delete;
 
 	if (c->ml_deleted && rtpe_now.tv_sec >= c->ml_deleted) {
@@ -2102,6 +2102,8 @@ static void __update_media_protocol(struct call_media *media, struct call_media 
 			__t38_reset(media, other_media);
 		// drop through for protocol override
 	}
+}
+
 static void __update_rtpe_address(struct call_media* media, struct sdp_ng_flags *flags) {
 	struct packet_stream *ps;
 	
@@ -2136,7 +2138,7 @@ int monologue_offer_answer(struct call_monologue *other_ml, GQueue *streams,
 	monologue = other_ml->active_dialogue;
 	call = monologue->call;
 
-	call->last_signal = rtpe_now;
+	call->last_signal = MAX(call->last_signal, rtpe_now.tv_sec);
 	call->deleted = 0;
 
 	__C_DBG("this="STR_FORMAT" other="STR_FORMAT, STR_FMT(&monologue->tag), STR_FMT(&other_ml->tag));
@@ -2374,18 +2376,14 @@ init:
 
 		recording_setup_media(media);
 		t38_gateway_start(media->t38_gateway);
+
+		__update_rtpe_address(media, flags);
+		__update_rtpe_address(other_media, flags);
 	}
 
 	// set ipv4/ipv6/mixed media stats
 	if (flags && (flags->opmode == OP_OFFER || flags->opmode == OP_ANSWER)) {
 		statistics_update_ip46_inc_dec(call, CMC_INCREMENT);
-		
-		if (!call->rtpe_connection_addr.len) {
-			call->rtpe_connection_addr.s = call_malloc(call, 64);
-			format_network_address(&call->rtpe_connection_addr, media->streams.head->data, flags, 0);
-		}
-		__update_rtpe_address(media, flags);
-		__update_rtpe_address(other_media, flags);
 	}
 
 	return 0;

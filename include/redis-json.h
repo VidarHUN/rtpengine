@@ -121,7 +121,7 @@ typedef struct redis_call {
 	struct obj		obj;
 	str*			call_id;
 	struct timeval		created;
-	struct timeval		last_signal;
+	time_t		last_signal;
 	unsigned		tos;
 	gboolean		deleted;
 	gboolean		ml_deleted;

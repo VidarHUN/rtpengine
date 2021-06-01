@@ -1706,7 +1706,7 @@ static int json_build_ssrc(struct call *c, JsonReader *root_reader) {
 	return 0;
 }
 
-static void json_restore_call(JsonParser *parser, const str *callid, enum call_type type) {
+static void json_restore_call(JsonParser *parser, const str *callid, int foreign) {
 	struct redis_hash call;
 	struct redis_list tags, sfds, streams, medias, maps;
 	struct call *c = NULL;
@@ -1728,7 +1728,7 @@ static void json_restore_call(JsonParser *parser, const str *callid, enum call_t
 		goto err1;
 
 	err = "call already exists";
-	if (c->last_signal.tv_sec)
+	if (c->last_signal)
 		goto err2;
 	err = "'call' data incomplete";
 	if (json_get_hash(&call, "json", -1, root_reader))
@@ -1770,7 +1770,7 @@ static void json_restore_call(JsonParser *parser, const str *callid, enum call_t
 		goto err8;
 	c->last_signal = last_signal;
 	err = "missing 'last signal' timestamp";
-	if (redis_hash_get_timeval(&c->last_signal, &call, "last_signal"))
+	if (redis_hash_get_time_t(&c->last_signal, &call, "last_signal"))
 		goto err8;
 	if (redis_hash_get_int(&i, &call, "tos"))
 		c->tos = 184;
@@ -1976,7 +1976,7 @@ static void redis_update_call_codec_handlers(struct call_media *media) {
 		if (other_m->index == media->index) {
 			rlog(LOG_INFO, "['" STR_FORMAT_M "'] media %u: updating codec handlers",
 			     STR_FMT_M(&media->call->callid), media->unique_id);
-			codec_handlers_update(media, other_m, NULL);
+			codec_handlers_update(media, other_m, NULL, NULL);
 			break;
 		}
 	}
@@ -2067,7 +2067,7 @@ static void redis_update_call_crypto_sync_sdes_params(GQueue *m_sdes_q, GQueue *
 static int redis_update_call_crypto(struct call_media *m, redis_call_media_t *media) {
 	const struct dtls_hash_func *found_hash_func;
 	int needReinitCrypto = 0;
-	AUTO_CLEANUP_BUF(paramsbuf);
+	AUTO_CLEANUP_GBUF(paramsbuf);
 
 	if (media->fingerprint.hash_func_name && !m->fingerprint.hash_func) {
 		found_hash_func = dtls_find_hash_func(media->fingerprint.hash_func_name);
@@ -2149,7 +2149,7 @@ static int redis_update_call_media(struct call *c, redis_call_t* redis_call) {
 static void redis_update_call_details(redis_call_t *redis_call, struct call *c) {
 	const char *err = NULL;
 
-	if (timeval_us(&c->last_signal) >= timeval_us(&redis_call->last_signal)) {
+	if (c->last_signal >= redis_call->last_signal) {
 		rlog(LOG_INFO, "Ignoring Redis notification without update");
 		return;
 	}
@@ -2204,7 +2204,7 @@ static void redis_update_call(str *callid, struct redis *r, struct call *call) {
 		/* call the old reader (for now) as it knows how to create a call from scratch */
 		/* TODO: verify the new reader in call create scenarios and dump the old code */
 		rlog(LOG_INFO, "Creating a new call from redis");
-		json_restore_call(parser, callid, CT_FOREIGN_CALL);
+		json_restore_call(parser, callid, 1);
 		goto done;
 	}
 
@@ -2225,7 +2225,7 @@ done:
 	log_info_clear();
 }
 
-static void json_parse_end_restore_call(struct redis *r, str *callid, enum call_type type) {
+static void json_parse_end_restore_call(struct redis *r, str *callid, int foreign) {
 	redisReply* rr_jsonStr;
 	const char *err = NULL;
 	JsonParser *parser = NULL;
@@ -2239,7 +2239,7 @@ static void json_parse_end_restore_call(struct redis *r, str *callid, enum call_
 	err = "could not parse JSON data";
 	if (!json_parser_load_from_data (parser, rr_jsonStr->str, -1, NULL))
 		goto fail;
-	json_restore_call(parser, callid, type);
+	json_restore_call(parser, callid, foreign);
 	goto done;
 fail:
 	rlog(LOG_WARNING, "Failed to restore call ID '" STR_FORMAT_M "' from Redis: %s",
@@ -2271,7 +2271,7 @@ static void restore_thread(void *call_p, void *ctx_p) {
 	r = g_queue_pop_head(&ctx->r_q);
 	mutex_unlock(&ctx->r_m);
 
-	json_parse_end_restore_call(r, &callid, CT_OWN_CALL);
+	json_parse_end_restore_call(r, &callid, 0);
 
 	mutex_lock(&ctx->r_m);
 	g_queue_push_tail(&ctx->r_q, r);
@@ -2451,7 +2451,7 @@ static char* redis_encode_json(struct call *c) {
 
 		{
 			JSON_SET_SIMPLE("created","%lli", timeval_us(&c->created));
-			JSON_SET_SIMPLE("last_signal","%lli",timeval_us(&c->last_signal));
+			JSON_SET_SIMPLE("last_signal","%ld",(long int) c->last_signal);
 			JSON_SET_SIMPLE("tos","%u",(int) c->tos);
 			JSON_SET_SIMPLE("deleted","%ld",(long int) c->deleted);
 			JSON_SET_SIMPLE("num_sfds","%u",g_queue_get_length(&c->stream_fds));

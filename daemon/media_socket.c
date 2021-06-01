@@ -1831,7 +1831,7 @@ static int media_packet_address_check(struct packet_handler_ctx *phc)
 
 	/* wait at least 3 seconds after last signal before committing to a particular
 	 * endpoint address */
-	if (!phc->mp.call->last_signal.tv_sec || rtpe_now.tv_sec <= phc->mp.call->last_signal.tv_sec + 3)
+	if (!phc->mp.call->last_signal || rtpe_now.tv_sec <= phc->mp.call->last_signal + 3)
 		goto update_peerinfo;
 
 confirm_now:
@@ -2258,7 +2258,7 @@ struct stream_fd *stream_fd_new(socket_t *fd, struct call *call, const struct lo
 		pi.obj = &sfd->obj;
 		pi.readable = stream_fd_readable;
 		pi.closed = stream_fd_closed;
-
+	}
 	if (rtpe_config.poller_per_thread)
 		p = poller_map_get(rtpe_poller_map);
 	if (p) {
