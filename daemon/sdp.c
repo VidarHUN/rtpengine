@@ -1949,7 +1949,7 @@ static int replace_network_address(struct sdp_chopper *chop, struct network_addr
 		struct packet_stream *ps, struct sdp_ng_flags *flags, int keep_unspec)
 {
 	char buf[64];
-	int len;
+    str res = { buf, 0 };
 
 	if (copy_up_to(chop, &address->address_type))
 		return -1;
@@ -1957,13 +1957,8 @@ static int replace_network_address(struct sdp_chopper *chop, struct network_addr
 	if (flags->media_address.s && is_addr_unspecified(&flags->parsed_media_address))
 		__parse_address(&flags->parsed_media_address, NULL, NULL, &flags->media_address);
 
-	if (!is_addr_unspecified(&flags->parsed_media_address))
-		len = sprintf(buf, "%s %s",
-				flags->parsed_media_address.family->rfc_name,
-				sockaddr_print_buf(&flags->parsed_media_address));
-	else
-		call_stream_address46(buf, ps, SAF_NG, &len, NULL, keep_unspec);
-	chopper_append(chop, buf, len);
+    format_network_address(&res, ps, flags, keep_unspec);
+    chopper_append(chop, res.s, res.len);
 
 	if (skip_over(chop, &address->address))
 		return -1;

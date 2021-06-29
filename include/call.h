@@ -373,6 +373,7 @@ struct call_media {
 	int			ptime; // either from SDP or overridden
 
 	volatile unsigned int	media_flags;
+	str                     rtpe_connection_addr;
 };
 
 // link between subscribers and subscriptions
@@ -473,7 +474,7 @@ struct call {
 
 	str			callid;
 	struct timeval		created;
-	time_t			last_signal;
+	struct timeval		last_signal;
 	time_t			deleted;
 	time_t			ml_deleted;
 	unsigned char		tos;

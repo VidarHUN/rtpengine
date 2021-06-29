@@ -167,7 +167,7 @@ static void call_timer_iterator(struct call *c, struct iterator_helper *hlp) {
 	}
 
 	if (c->deleted && rtpe_now.tv_sec >= c->deleted
-			&& c->last_signal <= c->deleted)
+			&& c->last_signal.tv_sec <= c->deleted)
 		goto delete;
 
 	if (c->ml_deleted && rtpe_now.tv_sec >= c->ml_deleted) {
@@ -179,7 +179,7 @@ static void call_timer_iterator(struct call *c, struct iterator_helper *hlp) {
 		goto drop;
 
 	// ignore media timeout if call was recently taken over
-	if (c->foreign_media && rtpe_now.tv_sec - c->last_signal <= rtpe_config.timeout)
+	if (c->foreign_media && rtpe_now.tv_sec - c->last_signal.tv_sec <= rtpe_config.timeout)
 		goto out;
 
 	for (it = c->streams.head; it; it = it->next) {
@@ -2049,6 +2049,18 @@ static void __update_media_id(struct call_media *media, struct call_media *other
 	}
 }
 
+static void __update_rtpe_address(struct call_media* media, struct sdp_ng_flags *flags) {
+    struct packet_stream *ps;
+
+    if (media->rtpe_connection_addr.len || !media->streams.head)
+        return;
+
+    ps = media->streams.head->data;
+    media->rtpe_connection_addr.s = call_malloc(media->call, 64);
+    format_network_address(&media->rtpe_connection_addr, ps, flags, 0);
+    rlog(LOG_INFO, "Stored media address %s",media->rtpe_connection_addr.s);
+}
+
 static void __t38_reset(struct call_media *media, struct call_media *other_media) {
 	ilog(LOG_DEBUG, "Stopping T.38 gateway and resetting %s/" STR_FORMAT " to %s/" STR_FORMAT,
 			media->protocol->name,
@@ -2320,7 +2332,7 @@ int monologue_offer_answer(struct call_monologue *dialogue[2], GQueue *streams,
 
 	call = monologue->call;
 
-	call->last_signal = MAX(call->last_signal, rtpe_now.tv_sec);
+	call->last_signal.tv_sec = MAX(call->last_signal.tv_sec, rtpe_now.tv_sec);
 	call->deleted = 0;
 
 	__C_DBG("this="STR_FORMAT" other="STR_FORMAT, STR_FMT(&monologue->tag), STR_FMT(&other_ml->tag));
@@ -2566,6 +2578,8 @@ int monologue_offer_answer(struct call_monologue *dialogue[2], GQueue *streams,
 
 	__update_init_subscribers(other_ml, streams, flags);
 	__update_init_subscribers(monologue, NULL, NULL);
+    __update_rtpe_address(media, flags);
+    __update_rtpe_address(other_media, flags);
 
 	// set ipv4/ipv6/mixed media stats
 	if (flags && (flags->opmode == OP_OFFER || flags->opmode == OP_ANSWER)) {

@@ -556,7 +556,7 @@ static void cli_incoming_list_callid(str *instr, struct cli_writer *cw) {
 			 "\ncallid: %s\ndeletionmark: %s\ncreated: %i\nproxy: %s\ntos: %u\nlast_signal: %llu\n"
 			 "redis_keyspace: %i\nforeign: %s\n\n",
 			 c->callid.s, c->ml_deleted ? "yes" : "no", (int) c->created.tv_sec, c->created_from,
-			 (unsigned int) c->tos, (unsigned long long) c->last_signal, c->redis_hosted_db,
+			 (unsigned int) c->tos, (unsigned long long) c->last_signal.tv_sec, c->redis_hosted_db,
 			 IS_FOREIGN_CALL(c) ? "yes" : "no");
 
 	for (l = c->monologues.head; l; l = l->next) {
@@ -1087,10 +1087,10 @@ static void cli_incoming_active_standby(struct cli_writer *cw, int foreign) {
 		struct call *c = value;
 		rwlock_lock_w(&c->master_lock);
 		call_make_own_foreign(c, foreign);
-		c->last_signal = MAX(c->last_signal, rtpe_now.tv_sec);
+		c->last_signal.tv_sec = MAX(c->last_signal.tv_sec, rtpe_now.tv_sec);
 		if (!foreign) {
 			c->foreign_media = 1; // ignore timeout until we have media
-			c->last_signal++; // we are authoritative now
+			c->last_signal.tv_sec++; // we are authoritative now
 		}
 		rwlock_unlock_w(&c->master_lock);
 		redis_update_onekey(c, rtpe_redis_write);

@@ -103,6 +103,7 @@ void codec_packet_free(void *);
 void payload_type_free(struct rtp_payload_type *p);
 struct rtp_payload_type *rtp_payload_type_dup(const struct rtp_payload_type *pt);
 
+str *codec_print_payload_type(const struct rtp_payload_type* pt);
 // special return value `(void *) 0x1` to signal type mismatch
 struct rtp_payload_type *codec_make_payload_type(const str *codec_str, enum media_type);
 
